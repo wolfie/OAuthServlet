@@ -1,0 +1,25 @@
+<project default="jar">
+	<property name="builddir" value="antbuild"/>
+	<property name="srcdir" value="src"/>
+	<property name="jarname" value="oauthservlet.jar"/>
+	<property name="libdir" value="lib"/>
+		
+	<target name="jar" depends="compile, copysources">
+		<delete file="${jarname}"/>
+		<jar destfile="${jarname}" basedir="${builddir}" />
+	</target>
+	
+	<target name="compile">
+		<delete dir="${builddir}" failonerror="false" />
+		<mkdir dir="${builddir}" />
+		<javac srcdir="${srcdir}" destdir="${builddir}">
+			<classpath>
+				<fileset dir="${libdir}" includes="**/*.jar"/>
+			</classpath>
+		</javac>
+	</target>
+	
+	<target name="copysources">
+		<copydir dest="${builddir}" src="${srcdir}"></copydir>
+	</target>
+</project>
