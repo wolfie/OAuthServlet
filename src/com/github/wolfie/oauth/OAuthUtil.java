@@ -6,19 +6,17 @@ import java.util.Map;
 import org.scribe.builder.ServiceBuilder;
 import org.scribe.builder.api.Api;
 import org.scribe.builder.api.TwitterApi;
+import org.scribe.model.OAuthRequest;
+import org.scribe.model.Response;
 import org.scribe.model.Token;
+import org.scribe.model.Verb;
 import org.scribe.model.Verifier;
 import org.scribe.oauth.OAuthService;
 
+import com.github.wolfie.oauth.exception.OAuthInfoNotFoundException;
+import com.github.wolfie.oauth.exception.VerifierNotFoundFoundException;
+
 class OAuthUtil {
-
-  public static class VerifierNotFoundFoundException extends Exception {
-    private static final long serialVersionUID = 7223411711991590487L;
-  }
-
-  public static class OAuthInfoNotFoundException extends Exception {
-    private static final long serialVersionUID = -7385579731681133274L;
-  }
 
   static class OAuthInfo {
 
@@ -98,20 +96,24 @@ class OAuthUtil {
     }
 
     public boolean isTwitter() {
-      return oauthApiClass.equals(TwitterApi.class);
+      return !isDenied() && oauthApiClass.equals(TwitterApi.class);
     }
   }
 
-  static final String PARAM_VERIFIER = "oauth_verifier";
-  static final String PARAM_TOKEN = "oauth_token";
-  static final String PARAM_REDIRECT = "post_redirect";
-  static final String PARAM_DENIED = "denied";
-  static final String PARAM_ID = "oauth_id";
+  public static final String PARAM_VERIFIER = "oauth_verifier";
+  public static final String PARAM_TOKEN = "oauth_token";
+  public static final String PARAM_REDIRECT = "post_redirect";
+  public static final String PARAM_DENIED = "denied";
+  public static final String PARAM_ID = "oauth_id";
+  public static final String COOKIE_NAME = "oauth_id";
+
+  private static final String TWITTER_BASIC_INFO = "http://api.twitter.com/1/account/verify_credentials.xml";
 
   private OAuthUtil() {
     // not instantiable
   }
 
+  // TODO: timeout handling
   private static Map<OAuthIdentifier, OAuthInfo> oauthMap = new HashMap<OAuthIdentifier, OAuthInfo>();
   private static Map<OAuthIdentifier, OAuthAccessListener> loginListeners = new HashMap<OAuthIdentifier, OAuthAccessListener>();
 
@@ -193,5 +195,29 @@ class OAuthUtil {
     if (listener != null) {
       listener.accessGranted();
     }
+  }
+
+  public static String getBasicInfoRaw(final OAuthIdentifier id) {
+    try {
+      final OAuthInfo oauthInfo = getOauthInfo(id);
+
+      if (oauthInfo.isTwitter()) {
+        final OAuthService service = oauthInfo.getService();
+        final Token accessToken = oauthInfo.getAccessToken();
+        System.out.println(accessToken);
+        final OAuthRequest basicInfoRequest = new OAuthRequest(Verb.GET,
+            TWITTER_BASIC_INFO);
+        // basicInfoRequest.addBodyParameter("skip_status", "true");
+        service.signRequest(accessToken, basicInfoRequest);
+        final Response response = basicInfoRequest.send();
+        return response.getBody();
+      } else {
+        throw new RuntimeException(
+            "There's some unfinished business going on...");
+      }
+    } catch (final OAuthInfoNotFoundException e) {
+      e.printStackTrace();
+    }
+    return null;
   }
 }
