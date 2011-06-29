@@ -20,6 +20,8 @@
 	</target>
 	
 	<target name="copysources">
-		<copydir dest="${builddir}" src="${srcdir}"></copydir>
+		<copy todir="${builddir}">
+			<fileset dir="${srcdir}" includes="**/*.java"/>
+		</copy>
 	</target>
 </project>
