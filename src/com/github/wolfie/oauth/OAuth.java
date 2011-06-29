@@ -9,7 +9,7 @@ public class OAuth {
   }
 
   public static void addListener(final OAuthIdentifier id,
-      final OAuthLoginListener listener) {
+      final OAuthAccessListener listener) {
     OAuthUtil.addListener(id, listener);
   }
 

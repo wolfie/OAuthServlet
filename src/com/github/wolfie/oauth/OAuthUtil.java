@@ -113,7 +113,7 @@ class OAuthUtil {
   }
 
   private static Map<OAuthIdentifier, OAuthInfo> oauthMap = new HashMap<OAuthIdentifier, OAuthInfo>();
-  private static Map<OAuthIdentifier, OAuthLoginListener> loginListeners = new HashMap<OAuthIdentifier, OAuthLoginListener>();
+  private static Map<OAuthIdentifier, OAuthAccessListener> loginListeners = new HashMap<OAuthIdentifier, OAuthAccessListener>();
 
   public static OAuthLoginInfo createTwitterLogin(final String twitterApiKey,
       final String twitterSecretKey, final String callbackUri) {
@@ -173,7 +173,7 @@ class OAuthUtil {
   }
 
   public static void addListener(final OAuthIdentifier id,
-      final OAuthLoginListener listener) {
+      final OAuthAccessListener listener) {
     if (listener != null && id != null) {
       loginListeners.put(id, listener);
     } else {
@@ -181,17 +181,17 @@ class OAuthUtil {
     }
   }
 
-  public static void loginUnsuccessful(final OAuthIdentifier id) {
-    final OAuthLoginListener listener = loginListeners.get(id);
+  public static void accessDenied(final OAuthIdentifier id) {
+    final OAuthAccessListener listener = loginListeners.get(id);
     if (listener != null) {
-      listener.loginFailed();
+      listener.accessDenied();
     }
   }
 
-  public static void loginSuccessful(final OAuthIdentifier id) {
-    final OAuthLoginListener listener = loginListeners.get(id);
+  public static void accessGranted(final OAuthIdentifier id) {
+    final OAuthAccessListener listener = loginListeners.get(id);
     if (listener != null) {
-      listener.loginSucceeded();
+      listener.accessGranted();
     }
   }
 }

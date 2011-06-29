@@ -25,13 +25,13 @@ public class OAuthServlet extends HttpServlet {
 
         if (oauthIsDenied(request)) {
           OAuthUtil.setDenied(id);
-          OAuthUtil.loginUnsuccessful(id);
+          OAuthUtil.accessDenied(id);
         } else {
 
           final String verifier = request
               .getParameter(OAuthUtil.PARAM_VERIFIER);
           OAuthUtil.setVerifier(id, verifier);
-          OAuthUtil.loginSuccessful(id);
+          OAuthUtil.accessGranted(id);
         }
       } catch (final OAuthInfoNotFoundException e) {
         throw new ServletException(e);
