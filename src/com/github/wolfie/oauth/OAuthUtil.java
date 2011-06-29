@@ -63,7 +63,7 @@ public class OAuthUtil {
       } else {
         combinationChar = '?';
       }
-      return callbackUri + combinationChar + UUID_PARAM_NAME + "=" + uuid;
+      return callbackUri + combinationChar + PARAM_UUID + "=" + uuid;
     }
 
     public OAuthService getService() {
@@ -103,10 +103,11 @@ public class OAuthUtil {
     }
   }
 
-  static final String VERIFIER_PARAM_NAME = "oauth_verifier";
-  static final String TOKEN_PARAM_NAME = "oauth_token";
-  static final String DENIED_PARAM_NAME = "denied";
-  static final String UUID_PARAM_NAME = "oauth_uuid";
+  static final String PARAM_VERIFIER = "oauth_verifier";
+  static final String PARAM_TOKEN = "oauth_token";
+  static final String PARAM_REDIRECT = "post_redirect";
+  static final String PARAM_DENIED = "denied";
+  static final String PARAM_UUID = "oauth_uuid";
 
   private OAuthUtil() {
     // not instantiable

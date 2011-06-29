@@ -22,7 +22,7 @@ public class OAuthServlet extends HttpServlet {
       try {
 
         final UUID uuid = UUID.fromString(request
-            .getParameter(OAuthUtil.UUID_PARAM_NAME));
+            .getParameter(OAuthUtil.PARAM_UUID));
 
         if (oauthIsDenied(request)) {
           OAuthUtil.setDenied(uuid);
@@ -30,7 +30,7 @@ public class OAuthServlet extends HttpServlet {
         } else {
 
           final String verifier = request
-              .getParameter(OAuthUtil.VERIFIER_PARAM_NAME);
+              .getParameter(OAuthUtil.PARAM_VERIFIER);
           OAuthUtil.setVerifier(uuid, verifier);
           OAuthUtil.loginSuccessful(uuid);
         }
@@ -39,21 +39,27 @@ public class OAuthServlet extends HttpServlet {
       }
     }
 
-    response.sendRedirect(request.getContextPath());
+    final String redirect;
+    if (request.getParameter(OAuthUtil.PARAM_REDIRECT) != null) {
+      redirect = request.getParameter(OAuthUtil.PARAM_REDIRECT);
+    } else {
+      redirect = request.getContextPath();
+    }
+    response.sendRedirect(redirect);
   }
 
   private static boolean oauthIsDenied(final ServletRequest request) {
-    final boolean hasUuid = (request.getParameter(OAuthUtil.UUID_PARAM_NAME) != null);
-    final boolean isDenied = (request.getParameter(OAuthUtil.DENIED_PARAM_NAME) != null);
+    final boolean hasUuid = (request.getParameter(OAuthUtil.PARAM_UUID) != null);
+    final boolean isDenied = (request.getParameter(OAuthUtil.PARAM_DENIED) != null);
     return hasUuid && isDenied;
   }
 
   private static boolean isOAuthResponse(final ServletRequest request) {
-    final boolean hasUuid = (request.getParameter(OAuthUtil.UUID_PARAM_NAME) != null);
-    final boolean isDenied = (request.getParameter(OAuthUtil.DENIED_PARAM_NAME) != null);
-    final boolean hasToken = (request.getParameter(OAuthUtil.TOKEN_PARAM_NAME) != null);
+    final boolean hasUuid = (request.getParameter(OAuthUtil.PARAM_UUID) != null);
+    final boolean isDenied = (request.getParameter(OAuthUtil.PARAM_DENIED) != null);
+    final boolean hasToken = (request.getParameter(OAuthUtil.PARAM_TOKEN) != null);
     final boolean hasVerifier = (request
-        .getParameter(OAuthUtil.VERIFIER_PARAM_NAME) != null);
+        .getParameter(OAuthUtil.PARAM_VERIFIER) != null);
     return hasUuid && (isDenied || (hasToken && hasVerifier));
   }
 }
