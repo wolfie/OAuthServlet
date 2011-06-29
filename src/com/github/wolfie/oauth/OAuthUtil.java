@@ -204,7 +204,6 @@ class OAuthUtil {
       if (oauthInfo.isTwitter()) {
         final OAuthService service = oauthInfo.getService();
         final Token accessToken = oauthInfo.getAccessToken();
-        System.out.println(accessToken);
         final OAuthRequest basicInfoRequest = new OAuthRequest(Verb.GET,
             TWITTER_BASIC_INFO);
         // basicInfoRequest.addBodyParameter("skip_status", "true");

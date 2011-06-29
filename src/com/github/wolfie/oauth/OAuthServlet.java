@@ -13,52 +13,65 @@ import com.github.wolfie.oauth.exception.OAuthInfoNotFoundException;
 
 public class OAuthServlet extends HttpServlet {
   private static final long serialVersionUID = 3695701637457598082L;
-  private static final int YEAR_IN_SECONDS = 31556926;
+
+  private static final int A_YEAR_IN_SECONDS = 31556926;
 
   @Override
   protected void doGet(final HttpServletRequest request,
       final HttpServletResponse response) throws ServletException, IOException {
 
     if (isLogoutQuery(request)) {
-      final Cookie oauthCookie = getOAuthCookie(request);
-      oauthCookie.setMaxAge(0);
-      // is this needed?
-      response.addCookie(oauthCookie);
-
-      OAuthUtil.destroy(new OAuthIdentifier(oauthCookie.getValue()));
+      cleanup(request, response);
+    } else if (isOAuthResponse(request)) {
+      handleOAuthResponse(request, response);
     }
 
-    else if (isOAuthResponse(request)) {
-      try {
+    handleRedirect(request, response);
+  }
 
-        final OAuthIdentifier id = new OAuthIdentifier(
-            request.getParameter(OAuthUtil.PARAM_ID));
-
-        if (oauthIsDenied(request)) {
-          OAuthUtil.setDenied(id);
-          response.addCookie(removeCookie(id));
-          OAuthUtil.accessDenied(id);
-        } else {
-
-          final String verifier = request
-              .getParameter(OAuthUtil.PARAM_VERIFIER);
-          OAuthUtil.setVerifier(id, verifier);
-          response.addCookie(createCookie(id));
-          OAuthUtil.accessGranted(id);
-        }
-
-      } catch (final OAuthInfoNotFoundException e) {
-        throw new ServletException(e);
-      }
-    }
-
+  private static void handleRedirect(final HttpServletRequest request,
+      final HttpServletResponse response) {
     final String redirect;
     if (request.getParameter(OAuthUtil.PARAM_REDIRECT) != null) {
       redirect = request.getParameter(OAuthUtil.PARAM_REDIRECT);
     } else {
       redirect = request.getContextPath();
     }
-    response.sendRedirect(redirect);
+    response.setStatus(HttpServletResponse.SC_FOUND);
+    response.setHeader("Location", redirect);
+  }
+
+  private static void handleOAuthResponse(final HttpServletRequest request,
+      final HttpServletResponse response) throws ServletException {
+
+    try {
+      final OAuthIdentifier id = new OAuthIdentifier(
+          request.getParameter(OAuthUtil.PARAM_ID));
+
+      if (oauthIsDenied(request)) {
+        OAuthUtil.setDenied(id);
+        response.addCookie(removeCookie(id));
+        OAuthUtil.accessDenied(id);
+      } else {
+
+        final String verifier = request.getParameter(OAuthUtil.PARAM_VERIFIER);
+        OAuthUtil.setVerifier(id, verifier);
+        response.addCookie(createCookie(id));
+        OAuthUtil.accessGranted(id);
+      }
+    } catch (final OAuthInfoNotFoundException e) {
+      throw new ServletException(e);
+    }
+  }
+
+  private static void cleanup(final HttpServletRequest request,
+      final HttpServletResponse response) {
+    final Cookie oauthCookie = getOAuthCookie(request);
+    if (oauthCookie != null) {
+      oauthCookie.setMaxAge(0);
+      response.addCookie(oauthCookie);
+      OAuthUtil.destroy(new OAuthIdentifier(oauthCookie.getValue()));
+    }
   }
 
   private static Cookie getOAuthCookie(final HttpServletRequest request) {
@@ -78,19 +91,20 @@ public class OAuthServlet extends HttpServlet {
 
   private static Cookie createCookie(final OAuthIdentifier id) {
     final Cookie cookie = _newCookie(id);
-    cookie.setMaxAge(YEAR_IN_SECONDS);
+    cookie.setMaxAge(A_YEAR_IN_SECONDS);
     return cookie;
   }
 
   private static Cookie removeCookie(final OAuthIdentifier id) {
     final Cookie cookie = _newCookie(id);
     cookie.setMaxAge(0);
+    cookie.setValue("");
     return cookie;
   }
 
   private static Cookie _newCookie(final OAuthIdentifier id) {
     final Cookie cookie = new Cookie(OAuthUtil.COOKIE_NAME, id.toString());
-    cookie.setDomain("/");
+    cookie.setPath("/");
     return cookie;
   }
 
