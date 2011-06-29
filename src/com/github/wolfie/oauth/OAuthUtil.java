@@ -2,7 +2,6 @@ package com.github.wolfie.oauth;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
 
 import org.scribe.builder.ServiceBuilder;
 import org.scribe.builder.api.Api;
@@ -11,7 +10,7 @@ import org.scribe.model.Token;
 import org.scribe.model.Verifier;
 import org.scribe.oauth.OAuthService;
 
-public class OAuthUtil {
+class OAuthUtil {
 
   public static class VerifierNotFoundFoundException extends Exception {
     private static final long serialVersionUID = 7223411711991590487L;
@@ -32,11 +31,12 @@ public class OAuthUtil {
     private boolean denied = false;
     private final Class<? extends Api> oauthApiClass;
 
-    public OAuthInfo(final UUID uuid, final Class<? extends Api> oauthApiClass,
-        final String apiKey, final String secretKey, final String callbackUri) {
+    public OAuthInfo(final OAuthIdentifier id,
+        final Class<? extends Api> oauthApiClass, final String apiKey,
+        final String secretKey, final String callbackUri) {
 
       this.oauthApiClass = oauthApiClass;
-      service = getTwitterService(uuid, apiKey, secretKey, callbackUri);
+      service = getTwitterService(id, apiKey, secretKey, callbackUri);
       requestToken = service.getRequestToken();
       authorizationUrl = service.getAuthorizationUrl(requestToken);
     }
@@ -45,25 +45,24 @@ public class OAuthUtil {
       return authorizationUrl;
     }
 
-    private static OAuthService getTwitterService(final UUID uuid,
+    private static OAuthService getTwitterService(final OAuthIdentifier id,
         final String twitterApiKey, final String twitterSecretKey,
         final String callbackUri) {
 
       return new ServiceBuilder().provider(TwitterApi.class)
-          .apiKey(twitterApiKey)
-          .callback(generateCallbackUri(callbackUri, uuid))
+          .apiKey(twitterApiKey).callback(generateCallbackUri(callbackUri, id))
           .apiSecret(twitterSecretKey).build();
     }
 
     private static String generateCallbackUri(final String callbackUri,
-        final UUID uuid) {
+        final OAuthIdentifier id) {
       final char combinationChar;
       if (callbackUri.contains("?")) {
         combinationChar = '&';
       } else {
         combinationChar = '?';
       }
-      return callbackUri + combinationChar + PARAM_UUID + "=" + uuid;
+      return callbackUri + combinationChar + PARAM_ID + "=" + id;
     }
 
     public OAuthService getService() {
@@ -107,29 +106,23 @@ public class OAuthUtil {
   static final String PARAM_TOKEN = "oauth_token";
   static final String PARAM_REDIRECT = "post_redirect";
   static final String PARAM_DENIED = "denied";
-  static final String PARAM_UUID = "oauth_uuid";
+  static final String PARAM_ID = "oauth_id";
 
   private OAuthUtil() {
     // not instantiable
   }
 
-  private static Map<UUID, OAuthInfo> oauthMap = new HashMap<UUID, OAuthInfo>();
-  private static Map<UUID, OAuthLoginListener> loginListeners = new HashMap<UUID, OAuthLoginListener>();
-
-  public static interface OAuthLoginInfo {
-    UUID getIdentifier();
-
-    String getLoginUri();
-  }
+  private static Map<OAuthIdentifier, OAuthInfo> oauthMap = new HashMap<OAuthIdentifier, OAuthInfo>();
+  private static Map<OAuthIdentifier, OAuthLoginListener> loginListeners = new HashMap<OAuthIdentifier, OAuthLoginListener>();
 
   public static OAuthLoginInfo createTwitterLogin(final String twitterApiKey,
       final String twitterSecretKey, final String callbackUri) {
 
-    final UUID randomUUID = UUID.randomUUID();
+    final OAuthIdentifier id = new OAuthIdentifier();
 
-    final OAuthInfo info = new OAuthInfo(randomUUID, TwitterApi.class,
-        twitterApiKey, twitterSecretKey, callbackUri);
-    oauthMap.put(randomUUID, info);
+    final OAuthInfo info = new OAuthInfo(id, TwitterApi.class, twitterApiKey,
+        twitterSecretKey, callbackUri);
+    oauthMap.put(id, info);
 
     final String loginUrl = info.getLoginUrl();
 
@@ -138,20 +131,20 @@ public class OAuthUtil {
         return loginUrl;
       }
 
-      public UUID getIdentifier() {
-        return randomUUID;
+      public OAuthIdentifier getIdentifier() {
+        return id;
       }
     };
   }
 
-  static Token getAccessToken(final UUID uuid)
+  public static Token getAccessToken(final OAuthIdentifier OAuthIdentifier)
       throws OAuthInfoNotFoundException, VerifierNotFoundFoundException {
-    return getOauthInfo(uuid).getAccessToken();
+    return getOauthInfo(OAuthIdentifier).getAccessToken();
   }
 
-  private static OAuthInfo getOauthInfo(final UUID uuid)
+  private static OAuthInfo getOauthInfo(final OAuthIdentifier OAuthIdentifier)
       throws OAuthInfoNotFoundException {
-    final OAuthInfo oAuthInfo = oauthMap.get(uuid);
+    final OAuthInfo oAuthInfo = oauthMap.get(OAuthIdentifier);
     if (oAuthInfo != null) {
       return oAuthInfo;
     } else {
@@ -159,42 +152,44 @@ public class OAuthUtil {
     }
   }
 
-  public static void setVerifier(final UUID uuid, final String verifier)
+  public static void setVerifier(final OAuthIdentifier id, final String verifier)
       throws OAuthInfoNotFoundException {
-    getOauthInfo(uuid).setVerifier(verifier);
+    getOauthInfo(id).setVerifier(verifier);
   }
 
-  public static void destroy(final UUID uuid) {
-    oauthMap.remove(uuid);
-    loginListeners.remove(uuid);
+  public static void destroy(final OAuthIdentifier OAuthIdentifier) {
+    oauthMap.remove(OAuthIdentifier);
+    loginListeners.remove(OAuthIdentifier);
   }
 
-  static void setDenied(final UUID uuid) throws OAuthInfoNotFoundException {
-    getOauthInfo(uuid).setDenied();
+  public static void setDenied(final OAuthIdentifier id)
+      throws OAuthInfoNotFoundException {
+    getOauthInfo(id).setDenied();
   }
 
-  public boolean isDenied(final UUID uuid) throws OAuthInfoNotFoundException {
-    return getOauthInfo(uuid).isDenied();
+  public boolean isDenied(final OAuthIdentifier id)
+      throws OAuthInfoNotFoundException {
+    return getOauthInfo(id).isDenied();
   }
 
-  public static void addListener(final UUID uuid,
+  public static void addListener(final OAuthIdentifier id,
       final OAuthLoginListener listener) {
-    if (listener != null && uuid != null) {
-      loginListeners.put(uuid, listener);
+    if (listener != null && id != null) {
+      loginListeners.put(id, listener);
     } else {
       throw new IllegalArgumentException("nulls are not allowed");
     }
   }
 
-  public static void loginUnsuccessful(final UUID uuid) {
-    final OAuthLoginListener listener = loginListeners.get(uuid);
+  public static void loginUnsuccessful(final OAuthIdentifier id) {
+    final OAuthLoginListener listener = loginListeners.get(id);
     if (listener != null) {
       listener.loginFailed();
     }
   }
 
-  public static void loginSuccessful(final UUID uuid) {
-    final OAuthLoginListener listener = loginListeners.get(uuid);
+  public static void loginSuccessful(final OAuthIdentifier id) {
+    final OAuthLoginListener listener = loginListeners.get(id);
     if (listener != null) {
       listener.loginSucceeded();
     }
