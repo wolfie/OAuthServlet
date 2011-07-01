@@ -1,5 +1,8 @@
 package com.github.wolfie.oauth;
 
+import javax.servlet.http.Cookie;
+import javax.servlet.http.HttpServletRequest;
+
 public class OAuth {
 
   // FIXME: move the method bodies from OAuthUtil here
@@ -17,5 +20,21 @@ public class OAuth {
 
   public static String getBasicInfoRaw(final OAuthIdentifier id) {
     return OAuthUtil.getBasicInfoRaw(id);
+  }
+
+  public static boolean tryAutoLogin(
+      final HttpServletRequest httpServletRequest, final String apiKey,
+      final String apiSecret) {
+    for (final Cookie cookie : httpServletRequest.getCookies()) {
+      if (cookie.getName().equals(OAuthUtil.COOKIE_NAME)
+          && !cookie.getValue().isEmpty()) {
+        return OAuthUtil.login(cookie.getValue(), apiKey, apiSecret);
+      }
+    }
+    return false;
+  }
+
+  public static void setAutoLoginHandler(final OAuthAutoLoginHandler handler) {
+    OAuthUtil.setAutolLoginHandler(handler);
   }
 }

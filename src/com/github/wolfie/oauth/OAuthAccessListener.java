@@ -1,7 +1,11 @@
 package com.github.wolfie.oauth;
 
 public interface OAuthAccessListener {
-  public void accessDenied();
+  public interface AccessEvent {
+    String getStorableString();
+  }
 
-  public void accessGranted();
+  public void accessGranted(AccessEvent event);
+
+  public void accessDenied();
 }

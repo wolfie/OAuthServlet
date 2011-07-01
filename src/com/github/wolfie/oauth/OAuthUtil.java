@@ -3,102 +3,18 @@ package com.github.wolfie.oauth;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.scribe.builder.ServiceBuilder;
-import org.scribe.builder.api.Api;
 import org.scribe.builder.api.TwitterApi;
 import org.scribe.model.OAuthRequest;
 import org.scribe.model.Response;
 import org.scribe.model.Token;
 import org.scribe.model.Verb;
-import org.scribe.model.Verifier;
 import org.scribe.oauth.OAuthService;
 
+import com.github.wolfie.oauth.OAuthAccessListener.AccessEvent;
 import com.github.wolfie.oauth.exception.OAuthInfoNotFoundException;
 import com.github.wolfie.oauth.exception.VerifierNotFoundFoundException;
 
 class OAuthUtil {
-
-  static class OAuthInfo {
-
-    private final OAuthService service;
-    private final Token requestToken;
-    private final String authorizationUrl;
-
-    private Verifier verifier = null;
-    private Token accessToken = null;
-    private boolean denied = false;
-    private final Class<? extends Api> oauthApiClass;
-
-    public OAuthInfo(final OAuthIdentifier id,
-        final Class<? extends Api> oauthApiClass, final String apiKey,
-        final String secretKey, final String callbackUri) {
-
-      this.oauthApiClass = oauthApiClass;
-      service = getTwitterService(id, apiKey, secretKey, callbackUri);
-      requestToken = service.getRequestToken();
-      authorizationUrl = service.getAuthorizationUrl(requestToken);
-    }
-
-    public String getLoginUrl() {
-      return authorizationUrl;
-    }
-
-    private static OAuthService getTwitterService(final OAuthIdentifier id,
-        final String twitterApiKey, final String twitterSecretKey,
-        final String callbackUri) {
-
-      return new ServiceBuilder().provider(TwitterApi.class)
-          .apiKey(twitterApiKey).callback(generateCallbackUri(callbackUri, id))
-          .apiSecret(twitterSecretKey).build();
-    }
-
-    private static String generateCallbackUri(final String callbackUri,
-        final OAuthIdentifier id) {
-      final char combinationChar;
-      if (callbackUri.contains("?")) {
-        combinationChar = '&';
-      } else {
-        combinationChar = '?';
-      }
-      return callbackUri + combinationChar + PARAM_ID + "=" + id;
-    }
-
-    public OAuthService getService() {
-      return service;
-    }
-
-    public Token getRequestToken() {
-      return requestToken;
-    }
-
-    public Token getAccessToken() throws VerifierNotFoundFoundException {
-      if (verifier == null) {
-        throw new VerifierNotFoundFoundException();
-      }
-
-      if (accessToken == null) {
-        accessToken = service.getAccessToken(requestToken, verifier);
-      }
-
-      return accessToken;
-    }
-
-    public void setVerifier(final String verifier) {
-      this.verifier = new Verifier(verifier);
-    }
-
-    public void setDenied() {
-      denied = true;
-    }
-
-    public boolean isDenied() {
-      return denied;
-    }
-
-    public boolean isTwitter() {
-      return !isDenied() && oauthApiClass.equals(TwitterApi.class);
-    }
-  }
 
   public static final String PARAM_VERIFIER = "oauth_verifier";
   public static final String PARAM_TOKEN = "oauth_token";
@@ -116,6 +32,8 @@ class OAuthUtil {
   // TODO: timeout handling
   private static Map<OAuthIdentifier, OAuthInfo> oauthMap = new HashMap<OAuthIdentifier, OAuthInfo>();
   private static Map<OAuthIdentifier, OAuthAccessListener> loginListeners = new HashMap<OAuthIdentifier, OAuthAccessListener>();
+
+  private static OAuthAutoLoginHandler autologinHandler = null;
 
   public static OAuthLoginInfo createTwitterLogin(final String twitterApiKey,
       final String twitterSecretKey, final String callbackUri) {
@@ -191,9 +109,21 @@ class OAuthUtil {
   }
 
   public static void accessGranted(final OAuthIdentifier id) {
-    final OAuthAccessListener listener = loginListeners.get(id);
-    if (listener != null) {
-      listener.accessGranted();
+    try {
+      final String serializedForm = getOauthInfo(id).serialize();
+
+      final OAuthAccessListener listener = loginListeners.get(id);
+      if (listener != null) {
+        listener.accessGranted(new AccessEvent() {
+          @Override
+          public String getStorableString() {
+            return serializedForm;
+          }
+        });
+      }
+    } catch (final OAuthInfoNotFoundException e) {
+      // bug, shoudlnt' happen!
+      e.printStackTrace();
     }
   }
 
@@ -218,5 +148,44 @@ class OAuthUtil {
       e.printStackTrace();
     }
     return null;
+  }
+
+  /**
+   * Try to log in with a cookie value
+   * 
+   * @param cookieValue
+   * @param apiKey
+   * @param apiSecret
+   * 
+   * @return <code>true</code> iff login is successful.
+   */
+  public static boolean login(final String cookieValue, final String apiKey,
+      final String apiSecret) {
+    try {
+      final OAuthIdentifier oAuthIdentifier = new OAuthIdentifier(cookieValue);
+      if (autologinHandler == null) {
+        throw new IllegalStateException(
+            "autologin handler needs to be set before trying to autologin!");
+      }
+
+      final String rawOAuthInfo = autologinHandler
+          .retrieveOAuthInfo(cookieValue);
+
+      final OAuthInfo deserialize = OAuthInfo.deserialize(oAuthIdentifier,
+          rawOAuthInfo, apiKey, apiSecret);
+
+      oauthMap.put(oAuthIdentifier, deserialize);
+      // TODO: make sure that the access is still valid
+      return true;
+
+    } catch (final IllegalArgumentException e) {
+      System.err.println("This is a bug in this library. Oops!");
+      e.printStackTrace();
+      return false;
+    }
+  }
+
+  public static void setAutolLoginHandler(final OAuthAutoLoginHandler handler) {
+    autologinHandler = handler;
   }
 }
