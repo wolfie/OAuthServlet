@@ -12,7 +12,7 @@
 	<target name="compile">
 		<delete dir="${builddir}" failonerror="false" />
 		<mkdir dir="${builddir}" />
-		<javac srcdir="${srcdir}" destdir="${builddir}">
+		<javac srcdir="${srcdir}" destdir="${builddir}" debug="true">
 			<classpath>
 				<fileset dir="${libdir}" includes="**/*.jar"/>
 			</classpath>
